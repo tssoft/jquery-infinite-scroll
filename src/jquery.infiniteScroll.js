@@ -1,7 +1,9 @@
 /**
- * Your plugin name and a small description
+ * jQuery Infinite Scroll Plugin for ajax-enabled infinite table scroll
+ * https://github.com/anjlab/jquery-infinite-scroll
+ *
  * Author: Sergey Glukhov, AnjLab (http://anjlab.com)
- * Version: 0.0.1
+ * Version: 0.0.2
  */
 
 (function($){
@@ -26,6 +28,10 @@
             }
         });
 
+        $this.on('infiniteScroll.triggerDataLoad', function (e) {
+            triggerDataLoad();
+        });
+
         function isScrolledIntoView(elem) {
             var docViewTop = $(window).scrollTop();
             var docViewBottom = docViewTop + $(window).height();
@@ -36,8 +42,11 @@
 
         function onDataLoaded(data) {
             var prev = $('.last-scroll-row');
-            if (prev.length && data.length) {
-                prev.after(data);
+            var markup = jQuery.isFunction(opts.transformData)
+                ? opts.transformData(data)
+                : data;
+            if (prev.length && markup && markup.length) {
+                prev.after(markup);
                 prev.removeClass('last-scroll-row');
                 $this.find(opts.itemSelector + ':last').addClass('last-scroll-row');
                 scrollTriggered = 0;
@@ -52,9 +61,12 @@
             if (jQuery.isFunction(opts.onDataLoading)) {
                 opts.onDataLoading(currentScrollPage);
             }
-            $.get(opts.dataPath + '?page=' + currentScrollPage)
+            var jxhr = jQuery.isFunction(opts.getDataLoader)
+                ? opts.getDataLoader(currentScrollPage)
+                : $.get(opts.dataPath + '?page=' + currentScrollPage);
+            jxhr
                 .always(onDataLoaded)
-                .fail(function() {
+                .fail(function () {
                     if (jQuery.isFunction(opts.onDataError)) {
                         opts.onDataError(currentScrollPage);
                     }
@@ -68,6 +80,8 @@
     $.fn.infiniteScroll.defaults = {
         dataPath: null,
         itemSelector: '.item',
+        getDataLoader: null, // function (page)
+        transformData: null, // function (data)
         onDataLoading: null, // function (page)
         onDataLoaded: null, // function (page)
         onDataError: null // function (page)
